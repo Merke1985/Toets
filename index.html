@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aeres Topografie Toets - Europa</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Comic+Neue&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Comic Neue', cursive;
+      background-color: #f5f7f6;
+    }
+    header {
+      background-color: white;
+      padding: 20px;
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      border-bottom: 4px solid #6BC048;
+    }
+    header button {
+      padding: 10px 16px;
+      background-color: #6BC048;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    header button:hover {
+      background-color: #5aaf3e;
+    }
+    main {
+      display: flex;
+      max-width: 1200px;
+      margin: 30px auto;
+      gap: 30px;
+    }
+    .toets-blok {
+      flex: 2;
+      background-color: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    }
+    .chat-blok {
+      flex: 1;
+      background-color: #ffffff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+      display: flex;
+      flex-direction: column;
+      height: fit-content;
+    }
+    .chat-berichten {
+      flex: 1;
+      height: 400px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      padding: 10px;
+      margin-bottom: 10px;
+      background: #f9f9f9;
+    }
+    .chat-berichten p {
+      margin: 5px 0;
+    }
+    .chat-inputs input {
+      padding: 6px;
+      margin: 3px;
+      width: calc(50% - 8px);
+    }
+    .chat-inputs button {
+      width: 100%;
+      margin-top: 5px;
+    }
+    h1, h3 {
+      text-align: center;
+      color: #2c3e50;
+    }
+    label {
+      font-weight: bold;
+      display: inline-block;
+      margin: 10px 10px 0 0;
+    }
+    .vraag {
+      margin-bottom: 30px;
+      padding: 15px;
+      border-left: 4px solid #6BC048;
+      background-color: #f9fdf8;
+      border-radius: 8px;
+    }
+    button {
+      margin: 15px 10px 0 0;
+      padding: 12px 24px;
+      background-color: #6BC048;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    button:hover {
+      background-color: #5aaf3e;
+    }
+    .resultaat {
+      font-weight: bold;
+      margin-top: 30px;
+      text-align: center;
+      font-size: 18px;
+      color: #2c3e50;
+    }
+    input[type="text"] {
+      padding: 6px;
+      margin: 5px;
+      width: 220px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <button onclick="openDocentpagina()">Docentenomgeving</button>
+  </header>
+  <main>
+    <div class="toets-blok">
+      <h1>Topografie Toets - Europa</h1>
+      <label>
+        Naam: <input type="text" id="leerlingNaam" required>
+      </label>
+      <label>
+        Klas: <input type="text" id="leerlingKlas" required>
+      </label><br>
+      <div id="toets"></div>
+      <button onclick="verzendToets()">Toets Inleveren</button>
+      <div class="resultaat" id="resultaat"></div>
+    </div>
+    <div class="chat-blok">
+      <h3>Chat met andere leerlingen</h3>
+      <div class="chat-berichten" id="chatBerichten"></div>
+      <div class="chat-inputs">
+        <input type="text" id="chatNaam" placeholder="Naam">
+        <input type="text" id="chatBoodschap" placeholder="Typ je bericht">
+        <button onclick="verstuurChat()">Verstuur</button>
+      </div>
+    </div>
+  </main>
+  <script>
+    const SUPABASE_URL = 'https://gtdzuuvlluyofkvbpusx.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd0ZHp1dXZsbHV5b2ZrdmJwdXN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIwNTUwMjAsImV4cCI6MjA2NzYzMTAyMH0.DcHwCLuyyVJvs0Ugpr7bE0Az5_tkES4kE_P0SUFOyus';
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const toegangscodeDocent = "Aeres123";
+
+    const vragen = [
+      { vraag: "Wat is de hoofdstad van Frankrijk?", opties: ["Parijs", "Lyon", "Marseille", "Nice"], antwoord: "Parijs" },
+      { vraag: "Wat is de hoofdstad van Duitsland?", opties: ["Berlijn", "Hamburg", "München", "Keulen"], antwoord: "Berlijn" },
+      { vraag: "Wat is de hoofdstad van Spanje?", opties: ["Madrid", "Barcelona", "Valencia", "Sevilla"], antwoord: "Madrid" },
+      { vraag: "Wat is de hoofdstad van Italië?", opties: ["Rome", "Milaan", "Turijn", "Napels"], antwoord: "Rome" },
+      { vraag: "Wat is de hoofdstad van België?", opties: ["Brussel", "Antwerpen", "Gent", "Luik"], antwoord: "Brussel" },
+      { vraag: "Wat is de hoofdstad van Nederland?", opties: ["Amsterdam", "Rotterdam", "Utrecht", "Den Haag"], antwoord: "Amsterdam" },
+      { vraag: "Wat is de hoofdstad van Oostenrijk?", opties: ["Wenen", "Graz", "Salzburg", "Innsbruck"], antwoord: "Wenen" },
+      { vraag: "Wat is de hoofdstad van Portugal?", opties: ["Lissabon", "Porto", "Faro", "Coimbra"], antwoord: "Lissabon" },
+      { vraag: "Wat is de hoofdstad van Zweden?", opties: ["Stockholm", "Göteborg", "Malmö", "Uppsala"], antwoord: "Stockholm" },
+      { vraag: "Wat is de hoofdstad van Noorwegen?", opties: ["Oslo", "Bergen", "Trondheim", "Stavanger"], antwoord: "Oslo" }
+    ];
+
+    const toetsContainer = document.getElementById("toets");
+    vragen.forEach((v, i) => {
+      const div = document.createElement("div");
+      div.className = "vraag";
+      div.innerHTML = `<p><strong>${i + 1}. ${v.vraag}</strong></p>` +
+        v.opties.map(optie => `
+          <label>
+            <input type="radio" name="vraag_${i}" value="${optie}"> ${optie}
+          </label><br>`).join("");
+      toetsContainer.appendChild(div);
+    });
+
+    async function verzendToets() {
+      const naam = document.getElementById('leerlingNaam').value.trim();
+      const klas = document.getElementById('leerlingKlas').value.trim();
+      if (!naam || !klas) {
+        alert('Vul je naam en klas in.');
+        return;
+      }
+      for (let i = 0; i < vragen.length; i++) {
+        const gekozen = document.querySelector(`input[name='vraag_${i}']:checked`);
+        if (!gekozen) {
+          alert(`Vraag ${i + 1} is nog niet beantwoord.`);
+          return;
+        }
+      }
+      let score = 0;
+      let matrix = [];
+      vragen.forEach((v, i) => {
+        const gekozen = document.querySelector(`input[name='vraag_${i}']:checked`);
+        const correct = gekozen && gekozen.value === v.antwoord;
+        if (correct) score++;
+        matrix.push(correct);
+      });
+      const { error } = await supabaseClient.from("results").insert([
+        {
+          naam: naam,
+          klas: klas,
+          score: score,
+          matrix: JSON.stringify(matrix),
+          timestamp: new Date().toISOString()
+        }
+      ]);
+      if (error) {
+        document.getElementById("resultaat").textContent = "Fout bij opslaan: " + error.message;
+      } else {
+        document.getElementById("resultaat").textContent = `Je score is ${score} van de ${vragen.length}`;
+      }
+    }
+
+    function openDocentpagina() {
+      const code = prompt("Voer de toegangscode in om de docentenomgeving te openen:");
+      if (code === toegangscodeDocent) {
+        window.open("docent.html", "_blank");
+      } else {
+        alert("Onjuiste toegangscode.");
+      }
+    }
+
+    async function laadChat() {
+      const { data, error } = await supabaseClient.from("chat").select("*").order("timestamp", { ascending: true });
+      if (!error) {
+        const chatBox = document.getElementById("chatBerichten");
+        chatBox.innerHTML = "";
+        data.forEach(msg => {
+          const tijd = new Date(msg.timestamp).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+          const p = document.createElement("p");
+          p.innerHTML = `<strong>${msg.naam}</strong> <em style="color:gray;">(${tijd})</em>: ${msg.boodschap}`;
+          chatBox.appendChild(p);
+        });
+        chatBox.scrollTop = chatBox.scrollHeight;
+      }
+    }
+
+    async function verstuurChat() {
+      const naam = document.getElementById("chatNaam").value.trim();
+      const boodschap = document.getElementById("chatBoodschap").value.trim();
+      if (!naam || !boodschap) return;
+      const { error } = await supabaseClient.from("chat").insert([{ naam, boodschap }]);
+      if (!error) {
+        document.getElementById("chatBoodschap").value = "";
+        laadChat();
+      }
+    }
+
+    supabaseClient
+      .channel('chatroom')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat' }, payload => {
+        laadChat();
+      })
+      .subscribe();
+
+    laadChat();
+  </script>
+</body>
+</html>
